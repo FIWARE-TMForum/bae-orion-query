@@ -45,7 +45,6 @@ class KeystoneClient(object):
 
     def __init__(self):
         self._login()
-        self._url = ''
 
     def _login(self):
         if IS_LEGACY_IDM:
@@ -103,9 +102,6 @@ class KeystoneClient(object):
         role_id = self._get_role_id(app_id, role_name)
         path = '/v3/OS-ROLES/users/{}/applications/{}/roles/{}'.format(user.username, app_id, role_id) if IS_LEGACY_IDM else '/v1/applications/{}/users/{}/roles/{}'.format(app_id, user.username, role_id)
         return KEYSTONE_HOST + path
-
-    def set_resource_url(self, url):
-        self._url = url
 
     def check_role(self, app_id, role):
         self._get_role_id(app_id, role)

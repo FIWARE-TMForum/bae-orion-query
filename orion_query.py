@@ -37,41 +37,11 @@ from umbrella_client import UmbrellaClient
 from keystone_client import KeystoneClient
 
 
-class JointClient():
-
-    def __init__(self, url, credentials):
-        parsed_url = urlparse(url)
-        server = '{}://{}'.format(parsed_url.scheme, parsed_url.netloc)
-
-        self._umbrella_client = UmbrellaClient(server, credentials['token'], credentials['key'])
-
-        self._keystone_client = KeystoneClient()
-        self._keystone_client.set_resource_url(url)
-        self._keystone_client.set_app_id(credentials['app_id'])
-
-    def check_role(self, role):
-        self._umbrella_client.check_role(role)
-        self._keystone_client.check_role(role)
-    
-    def grant_permission(self, customer, role):
-        self._umbrella_client.grant_permission(customer, role)
-        self._keystone_client.grant_permission(customer, role)
-    
-    def revoke_permission(self, customer, role):
-        self._umbrella_client.revoke_permission(customer, role)
-        self._keystone_client.revoke_permission(customer, role)
-
-
-class UmbrellaService(Plugin):
+class OrionQuery(Plugin):
 
     def __init__(self, plugin_model):
-        super(UmbrellaService, self).__init__(plugin_model)
+        super(OrionQuery, self).__init__(plugin_model)
         self._units = UNITS
-        self._clients = {
-            'idm': self._get_keystone_client,
-            'umbrella': self._get_umbrella_client,
-            'both': self._get_joint_client
-        }
 
     def _get_umbrella_client(self, url, credentials):
         parsed_url = urlparse(url)
@@ -79,21 +49,11 @@ class UmbrellaService(Plugin):
 
         return UmbrellaClient(server, credentials['token'], credentials['key'])
 
-    def _get_keystone_client(self, url, credentials):
+    def _get_keystone_client(self, credentials):
         keystone_client = KeystoneClient()
-        keystone_client.set_resource_url(url)
         keystone_client.set_app_id(credentials['app_id'])
 
         return keystone_client
-
-    def _get_joint_client(self, url, credentials):
-        return JointClient(url, credentials)
-
-    def _get_api_client(self, auth_method, url, server, credentials):
-        # Return API Client (Umbrella or keystone) depending on the authorization mechanism
-        effective_url = url if auth_method == 'idm' else server
-
-        return self._clients[auth_method](effective_url, credentials)
 
     def _check_api(self, url, token, key, server):
         parsed_url = urlparse(url)
@@ -107,10 +67,11 @@ class UmbrellaService(Plugin):
     def on_post_product_spec_validation(self, provider, asset):
         # If customer access to subpaths is allowed, the URL must not include query string
         url = asset.get_url()
-
         parsed_url = urlparse(url)
-        if asset.meta_info['path_allowed'] and (parsed_url.query != '' or asset.meta_info['qs_allowed']):
-            raise PluginError('Asset URL cannot include query strings when subpath access for customers is allowed')
+
+        # Validate that the provided URL is an orion query
+        if 'v2/entities' not in parsed_url.path or parsed_url.query == '':
+            raise PluginError('The provided URL is not a valid Context Broker query')
 
         # Check that the URL provided in the asset is a valid API Umbrella service
         token = asset.meta_info['admin_token']
@@ -119,21 +80,11 @@ class UmbrellaService(Plugin):
 
         asset.meta_info['app_id'] = self._check_api(url, token, key, server)
 
-        if asset.meta_info['app_id'] is not None:
-            keystone_client = self._get_keystone_client(url, {
-                'app_id': asset.meta_info['app_id']
-            })
-            keystone_client.check_ownership(provider.name)
-
-        # Check that the provided role is valid according to the selected auth method
-        server = asset.meta_info['api_umbrella_server']
-
-        client = self._get_api_client(asset.meta_info['auth_method'], url, server, {
-            'token': token,
-            'key': key,
+        keystone_client = self._get_keystone_client({
             'app_id': asset.meta_info['app_id']
         })
-        client.check_role(asset.meta_info['role'])
+        keystone_client.check_ownership(provider.name)
+        keystone_client.check_role(asset.meta_info['app_id'], asset.meta_info['role'])
 
         asset.save()
 
@@ -157,11 +108,10 @@ class UmbrellaService(Plugin):
         key = asset.meta_info['admin_key']
         server = asset.meta_info['api_umbrella_server']
 
-        client = self._get_api_client(asset.meta_info["auth_method"], asset.get_url(), server, {
-            'token': asset.meta_info['admin_token'],
-            'key': asset.meta_info['admin_key'],
+        client = self._get_keystone_client({
             'app_id': asset.meta_info['app_id']
         })
+
         client.grant_permission(order.customer, asset.meta_info['role'])
 
     def on_product_suspension(self, asset, contract, order):
@@ -170,11 +120,10 @@ class UmbrellaService(Plugin):
         key = asset.meta_info['admin_key']
         server = asset.meta_info['api_umbrella_server']
 
-        client = self._get_api_client(asset.meta_info["auth_method"], asset.get_url(), server, {
-            'token': asset.meta_info['admin_token'],
-            'key': asset.meta_info['admin_key'],
+        client = self._get_keystone_client({
             'app_id': asset.meta_info['app_id']
         })
+
         client.revoke_permission(order.customer, asset.meta_info['role'])
 
     ####################################################################
@@ -207,8 +156,6 @@ class UmbrellaService(Plugin):
             # Accounting is always done by Umbrella no mather who validates permissions
             token = asset.meta_info['admin_token']
             key = asset.meta_info['admin_key']
-            path_allowed = asset.meta_info['path_allowed']
-            extra_qs = asset.meta_info['qs_allowed']
 
             url = asset.get_url()
             server = asset.meta_info['api_umbrella_server']
@@ -217,6 +164,6 @@ class UmbrellaService(Plugin):
                 'token': token,
                 'key': key
             })
-            accounting.extend(client.get_drilldown_by_service(order.customer.email, url, path_allowed, extra_qs, start_at, end_at, unit.lower()))
+            accounting.extend(client.get_drilldown_by_service(order.customer.email, url, start_at, end_at, unit.lower()))
 
         return accounting, last_usage

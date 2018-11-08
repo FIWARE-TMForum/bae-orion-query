@@ -1,2 +1,2 @@
-# biz-umbrella-service
-BAE plugin for selling services secured with an API Umbrella proxy
+# bae-orion-query
+BAE plugin for selling context broker queries secured with API Umbrella

@@ -244,7 +244,7 @@ class UmbrellaClient(object):
                 'date': unicode(current_date.isoformat()) + 'T00:00:00Z'
             })
 
-    def _process_call_accounting(self, params, parsed_url, extra_qs):
+    def _process_call_accounting(self, params, parsed_url):
         def list_equal_elems(list1, list2):
             intersect = set(list2).intersection(list1)
             return len(list1) == len(list2) == len(intersect)
@@ -263,10 +263,6 @@ class UmbrellaClient(object):
                     if key not in parsed_elem_qs or not list_equal_elems(value, parsed_elem_qs[key]):
                         account = 0
                         break
-                else:
-                    # If not extra qs allowed and included in the log element, the call do not match
-                    if not extra_qs and len(parsed_elem_qs) != len(url_qs):
-                        account = 0
 
             return account
 
@@ -274,7 +270,7 @@ class UmbrellaClient(object):
 
         return accounting
 
-    def get_drilldown_by_service(self, email, service, path_allowed, extra_qs, start_at, end_at, unit):
+    def get_drilldown_by_service(self, email, service, start_at, end_at, unit):
         parsed_url = urlparse(service)
 
         rules = [
@@ -283,7 +279,7 @@ class UmbrellaClient(object):
         ]
 
         # Include path rule depending on whether subpath requests are allowed
-        path_operator = 'equal' if not path_allowed else 'begins_with'
+        path_operator = 'equal'
         rules.append(self._get_rule('request_path', parsed_url.path, operator=path_operator))
 
         query = {
@@ -298,4 +294,4 @@ class UmbrellaClient(object):
             'query': json.dumps(query)
         }
 
-        return self._accounting_processor[unit](params, parsed_url, extra_qs)
+        return self._accounting_processor[unit](params, parsed_url)

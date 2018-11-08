@@ -1,44 +1,28 @@
 {
-    "name": "Umbrella Service",
+    "name": "Orion Query",
     "author": "fdelavega",
-    "version": "0.2",
-    "module": "umbrella_service.UmbrellaService",
+    "version": "0.1",
+    "module": "orion_query.OrionQuery",
     "media_types": [],
     "formats": ["URL"],
     "overrides": [],
     "pull_accounting": true,
     "form": {
-        "auth_method": {
-            "type": "select",
-            "label": "Authorization Method",
-            "mandatory": true,
-            "default": "umbrella",
-            "options": [{
-                "text": "API Umbrella role",
-                "value": "umbrella"
-            }, {
-                "text": "FIWARE IdM role",
-                "value": "idm"
-            }, {
-                "text": "Both roles",
-                "value": "both"
-            }]
+        "service": {
+            "type": "text",
+            "label": "FIWARE Service",
+            "placeholder": "tenant"
+        },
+        "service_path": {
+            "type": "text",
+            "label": "FIWARE Service Path",
+            "placeholder": "/path"
         },
         "role": {
             "type": "text",
             "label": "Acquisition Role",
             "placeholder": "customer",
             "mandatory": true
-        },
-        "path_allowed": {
-            "type": "checkbox",
-            "mandatory": true,
-            "label": "Access to sub-paths allowed"
-        },
-        "qs_allowed": {
-            "type": "checkbox",
-            "mandatory": true,
-            "label": "Additional query strings allowed"
         },
         "api_umbrella_server": {
             "type": "text",
