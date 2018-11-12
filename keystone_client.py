@@ -17,19 +17,6 @@
 # You should have received a copy of the GNU Affero General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-
-from __future__ import unicode_literals
-
-import requests
-from urlparse import urlparse
-
-from django.core.exceptions import PermissionDenied
-
-from wstore.asset_manager.resource_plugins.plugin_error import PluginError
-
-from settings import KEYSTONE_HOST, KEYSTONE_PASSWORD, KEYSTONE_USER
-
-
 from __future__ import unicode_literals
 
 import requests
