@@ -19,6 +19,8 @@
 
 from __future__ import unicode_literals
 
+from os import environ
+
 UNITS = [{
     'name': 'Api call',
     'description': 'The final price is calculated based on the number of calls made to the API'
